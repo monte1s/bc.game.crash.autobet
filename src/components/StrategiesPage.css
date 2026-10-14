@@ -1,0 +1,57 @@
+.strategies-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.strategies-page__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.strategies-page__heading {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.strategies-page__pack {
+  margin-bottom: 14px;
+}
+
+.strategies-page__pack-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.strategies-page__pack-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.strategies-page__pack-meta {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.strategies-page__list {
+  display: grid;
+  gap: 8px;
+}
+
+.strategies-page__demo-note {
+  margin: 14px 0 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.45;
+}

@@ -1,0 +1,114 @@
+.strategy-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: inherit;
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.strategy-card:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+}
+
+.strategy-card.is-selected {
+  border-color: var(--accent);
+  background: var(--bg-selected);
+  box-shadow: inset 0 0 0 1px rgba(18, 183, 106, 0.15);
+}
+
+.strategy-card:disabled {
+  opacity: 0.7;
+}
+
+.strategy-card__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.strategy-card__icon.accent-green {
+  color: var(--accent);
+  background: rgba(18, 183, 106, 0.14);
+}
+
+.strategy-card__icon.accent-blue {
+  color: var(--blue);
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.strategy-card__icon.accent-yellow {
+  color: var(--yellow);
+  background: rgba(234, 179, 8, 0.14);
+}
+
+.strategy-card__icon.accent-pink {
+  color: var(--pink);
+  background: rgba(236, 72, 153, 0.14);
+}
+
+.strategy-card__icon.accent-cyan {
+  color: var(--cyan);
+  background: rgba(34, 211, 238, 0.14);
+}
+
+.strategy-card__icon.accent-purple {
+  color: var(--purple);
+  background: rgba(168, 85, 247, 0.14);
+}
+
+.strategy-card__icon.accent-gray {
+  color: var(--text-muted);
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.strategy-card__body {
+  min-width: 0;
+}
+
+.strategy-card__name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.strategy-card__description {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.strategy-card__chevron {
+  color: var(--text-dim);
+  display: grid;
+  place-items: center;
+}
+
+.strategy-card__radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid var(--border-strong);
+  display: grid;
+  place-items: center;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.strategy-card.is-selected .strategy-card__radio {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 3px var(--bg-surface);
+}
