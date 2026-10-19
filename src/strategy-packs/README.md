@@ -17,3 +17,11 @@ Modular strategy “skill packs” for Crash Auto Bet.
 4. If it is a new pack, register it in `src/strategy-packs/index.ts`
 
 See `.cursor/skills/add-strategy-pack/SKILL.md` for agent guidance.
+
+## signal13 (pure engine)
+
+Betting logic (no DOM / Chrome APIs):
+
+- `src/strategy-packs/signal13/signal13.ts` — `createSignal13State` / `decide` / `onRoundResult`
+- Wiring example: `src/strategy-packs/signal13/useCrashStrategy.example.ts`
+- Tests: `npm test`
