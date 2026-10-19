@@ -112,8 +112,9 @@ export function StrategiesPage() {
       />
 
       <p className="strategies-page__demo-note">
-        Demo UI only. Selecting a strategy and starting auto bet will not place real
-        wagers or connect to BC.GAME account APIs.
+        Start Auto Bet writes Amount + Auto cash out on the open Crash tab and clicks
+        Bet. Keep https://bc.game/game/crash on the Manual panel. Use bet 0 for
+        paper testing.
       </p>
     </div>
   )

@@ -4,6 +4,15 @@
   gap: 8px;
 }
 
+.stats-summary--secondary {
+  margin-top: 8px;
+  grid-template-columns: 1fr 2fr;
+}
+
+.stats-summary__cell--wide {
+  min-width: 0;
+}
+
 .stats-summary__cell {
   min-width: 0;
   padding: 8px 6px;
@@ -11,6 +20,25 @@
   border: 1px solid var(--border);
   background: rgba(15, 23, 42, 0.85);
   text-align: center;
+}
+
+button.stats-summary__cell--button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+button.stats-summary__cell--button:hover,
+button.stats-summary__cell--button:focus-visible {
+  border-color: rgba(52, 211, 153, 0.55);
+  background: rgba(16, 185, 129, 0.12);
+  outline: none;
 }
 
 .stats-summary__label {
@@ -46,6 +74,32 @@
 
 .stats-summary__value.is-neutral {
   color: var(--text);
+}
+
+.stats-summary__value--wrap {
+  white-space: normal;
+  line-height: 1.25;
+  font-size: 10px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stats-summary__value.is-skip {
+  color: #fcd34d;
+}
+
+.stats-summary__skip-reason {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: center;
 }
 
 .stats-summary__caption {

@@ -2,6 +2,243 @@ const STORAGE_KEY = 'crashAutobetHistoryEntries'
 const MAX_LOGS = 80
 const CRASH_GAME_URL = 'https://bc.game/game/crash'
 
+/**
+ * Runs inside the Crash page (via chrome.scripting.executeScript).
+ * Must stay self-contained — no outer-scope references.
+ */
+function placeBetInPage(amount, target) {
+  function norm(text) {
+    return String(text || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase()
+  }
+
+  function findGroup(labelMatch) {
+    const groups = Array.from(document.querySelectorAll('[role="group"]'))
+    for (const group of groups) {
+      const label = group.querySelector('label')
+      if (norm(label?.textContent).includes(labelMatch)) return group
+    }
+    const labels = Array.from(document.querySelectorAll('label'))
+    for (const label of labels) {
+      if (!norm(label.textContent).includes(labelMatch)) continue
+      const group =
+        label.closest('[role="group"]') ||
+        label.closest('div.relative') ||
+        label.parentElement
+      if (group?.querySelector('input')) return group
+    }
+    return null
+  }
+
+  function setInput(input, value) {
+    if (!input) return false
+    const str = String(value)
+    input.focus()
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )?.set
+    if (setter) setter.call(input, str)
+    else input.value = str
+    input.dispatchEvent(
+      new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertReplacementText',
+        data: str,
+      }),
+    )
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+    input.blur()
+    return true
+  }
+
+  function findBetButton() {
+    const buttons = Array.from(
+      document.querySelectorAll('button.button-brand, button'),
+    )
+    return (
+      buttons.find((btn) => {
+        const text = norm(btn.textContent)
+        if (!text.includes('bet')) return false
+        if (text.includes('auto bet') || text.includes('autobet')) return false
+        return (
+          text === 'bet' ||
+          text.includes('next round') ||
+          /^bet\b/.test(text)
+        )
+      }) || null
+    )
+  }
+
+  // Prefer Manual tab
+  const manual = Array.from(
+    document.querySelectorAll('button.tabs-btn, button[role="tab"], button'),
+  ).find((btn) => norm(btn.textContent) === 'manual')
+  if (manual) {
+    const selected =
+      manual.getAttribute('aria-selected') === 'true' ||
+      manual.classList.contains('text-brand') ||
+      manual.classList.contains('!text-brand')
+    if (!selected) manual.click()
+  }
+
+  const amountInput =
+    findGroup('amount')?.querySelector('input[inputmode="decimal"], input') ||
+    null
+  const cashoutInput =
+    findGroup('auto cash out')?.querySelector(
+      'input[inputmode="decimal"], input',
+    ) || null
+  const betButton = findBetButton()
+
+  if (!amountInput || !cashoutInput || !betButton) {
+    return {
+      success: false,
+      error: 'Amount / Auto cash out / Bet controls not found',
+      foundAmount: Boolean(amountInput),
+      foundCashout: Boolean(cashoutInput),
+      foundBetButton: Boolean(betButton),
+    }
+  }
+
+  if (betButton.disabled || betButton.getAttribute('aria-disabled') === 'true') {
+    return {
+      success: false,
+      reason: 'not-betting-window',
+      error: 'Bet button disabled',
+    }
+  }
+
+  const btnText = norm(betButton.textContent)
+  if (btnText.includes('cancel')) {
+    return {
+      success: false,
+      reason: 'already-placed',
+      error: 'Already in a bet (Cancel showing)',
+    }
+  }
+
+  setInput(amountInput, amount)
+  setInput(cashoutInput, target)
+  betButton.click()
+
+  return {
+    success: true,
+    amount,
+    target,
+    amountValue: amountInput.value,
+    cashoutValue: cashoutInput.value,
+    betButtonText: btnText,
+  }
+}
+
+function readBetUiInPage() {
+  function norm(text) {
+    return String(text || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase()
+  }
+
+  function findGroup(labelMatch) {
+    const groups = Array.from(document.querySelectorAll('[role="group"]'))
+    for (const group of groups) {
+      const label = group.querySelector('label')
+      if (norm(label?.textContent).includes(labelMatch)) return group
+    }
+    return null
+  }
+
+  const amountInput =
+    findGroup('amount')?.querySelector('input[inputmode="decimal"], input') ||
+    null
+  const cashoutInput =
+    findGroup('auto cash out')?.querySelector(
+      'input[inputmode="decimal"], input',
+    ) || null
+  const buttons = Array.from(
+    document.querySelectorAll('button.button-brand, button'),
+  )
+  const betButton =
+    buttons.find((btn) => {
+      const text = norm(btn.textContent)
+      return (
+        text.includes('bet') &&
+        !text.includes('auto bet') &&
+        !text.includes('autobet')
+      )
+    }) || null
+  const btnText = betButton ? norm(betButton.textContent) : null
+
+  return {
+    foundAmount: Boolean(amountInput),
+    foundCashout: Boolean(cashoutInput),
+    foundBetButton: Boolean(betButton),
+    amountValue: amountInput?.value ?? null,
+    cashoutValue: cashoutInput?.value ?? null,
+    betButtonText: btnText,
+    bettingOpen: Boolean(
+      betButton &&
+        !betButton.disabled &&
+        betButton.getAttribute('aria-disabled') !== 'true' &&
+        btnText &&
+        btnText.includes('bet') &&
+        !btnText.includes('cancel'),
+    ),
+    lastGameId: null,
+  }
+}
+
+async function runInCrashTab(func, args = []) {
+  const tab = await getPreferredCrashTab()
+  if (!tab?.id) {
+    return {
+      success: false,
+      error:
+        'No BC.GAME Crash tab found. Open https://bc.game/game/crash first.',
+    }
+  }
+
+  try {
+    const injected = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      world: 'MAIN',
+      func,
+      args,
+    })
+    const result = injected?.[0]?.result
+    if (result == null) {
+      return { success: false, error: 'No result from Crash page script' }
+    }
+    return result
+  } catch (error) {
+    // Fallback to isolated world if MAIN is blocked
+    try {
+      const injected = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func,
+        args,
+      })
+      const result = injected?.[0]?.result
+      if (result == null) {
+        return { success: false, error: 'No result from Crash page script' }
+      }
+      return result
+    } catch (fallbackError) {
+      return {
+        success: false,
+        error:
+          fallbackError instanceof Error
+            ? fallbackError.message
+            : String(fallbackError || error),
+      }
+    }
+  }
+}
+
 /** @type {Set<chrome.runtime.Port>} */
 const sidePanelPorts = new Set()
 
@@ -160,6 +397,23 @@ function pingTab(tabId) {
 
 async function injectContentScript(tabId) {
   try {
+    // Drop any stale page API left after an extension reload, then inject fresh.
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        try {
+          window.__crashAutobetApi?.dispose?.()
+        } catch {
+          // ignore
+        }
+        try {
+          delete window.__crashAutobetApi
+          delete window.__crashAutobetHistoryInitialized
+        } catch {
+          // ignore
+        }
+      },
+    })
     await chrome.scripting.executeScript({
       target: { tabId },
       files: ['content-script.js'],
@@ -173,6 +427,15 @@ async function injectContentScript(tabId) {
   }
 }
 
+function isPortClosedError(error) {
+  const text = String(error || '').toLowerCase()
+  return (
+    text.includes('message port closed') ||
+    text.includes('receiving end does not exist') ||
+    text.includes('could not establish connection')
+  )
+}
+
 async function ensureContentScript(tabId) {
   const first = await pingTab(tabId)
   if (first.ready) return { ready: true, url: first.url }
@@ -182,12 +445,31 @@ async function ensureContentScript(tabId) {
     return { ready: false, error: injected.error || 'inject-failed' }
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 120))
+  await new Promise((resolve) => setTimeout(resolve, 180))
   const second = await pingTab(tabId)
   if (second.ready) return { ready: true, url: second.url }
+
+  // One more force-inject when the channel died mid-reload.
+  if (isPortClosedError(second.error) || isPortClosedError(first.error)) {
+    const retry = await injectContentScript(tabId)
+    if (retry.ok) {
+      await new Promise((resolve) => setTimeout(resolve, 180))
+      const third = await pingTab(tabId)
+      if (third.ready) return { ready: true, url: third.url }
+      return {
+        ready: false,
+        error:
+          third.error ||
+          'Content script still not responding. Refresh the Crash page.',
+      }
+    }
+  }
+
   return {
     ready: false,
-    error: second.error || 'Content script did not respond after injection',
+    error:
+      second.error ||
+      'Content script did not respond after injection. Refresh the Crash page.',
   }
 }
 
@@ -425,6 +707,56 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendToCrashTab({ type: 'refresh-history' }).then((result) => {
       sendResponse(result)
     })
+    return true
+  }
+
+  if (message?.type === 'get-bet-ui-status') {
+    ;(async () => {
+      const status = await runInCrashTab(readBetUiInPage, [])
+      if (status && typeof status === 'object' && 'foundAmount' in status) {
+        sendResponse({ success: true, status })
+        return
+      }
+      sendResponse({
+        success: false,
+        error:
+          status?.error ||
+          'Could not read bet controls on Crash page.',
+      })
+    })()
+    return true
+  }
+
+  if (message?.type === 'place-crash-bet') {
+    ;(async () => {
+      const amount = Number(message.amount)
+      const target = Number(message.target ?? message.cashout)
+      if (!Number.isFinite(amount) || amount < 0) {
+        sendResponse({ success: false, error: 'Invalid bet amount' })
+        return
+      }
+      if (!Number.isFinite(target) || target < 1.01) {
+        sendResponse({ success: false, error: 'Invalid cashout target' })
+        return
+      }
+
+      // Direct page injection — does not depend on content-script ports.
+      const result = await runInCrashTab(placeBetInPage, [amount, target])
+      if (result?.success) {
+        sendResponse(result)
+        return
+      }
+
+      // One retry after a short delay (Manual tab / React settle)
+      await new Promise((r) => setTimeout(r, 120))
+      const retry = await runInCrashTab(placeBetInPage, [amount, target])
+      sendResponse(
+        retry || {
+          success: false,
+          error: result?.error || 'Failed to place bet on Crash page',
+        },
+      )
+    })()
     return true
   }
 

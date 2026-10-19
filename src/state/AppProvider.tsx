@@ -6,6 +6,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react'
+import { getCrashBetUiStatus, placeCrashBet } from '../betting/crashBetService'
 import {
   createId,
   DEFAULT_SELECTED_STRATEGY,
@@ -16,9 +17,27 @@ import {
   createDefaultPredefinedConfigs,
   getPredefinedStrategy,
 } from '../data/predefinedStrategies'
+import { adaptCrashHistoryEntries } from '../history/crashHistoryAdapter'
+import {
+  connectHistoryPort,
+  fetchStoredHistory,
+  isHistoryEntryMessage,
+  pingCrashContentScript,
+  startHistoryCapture,
+} from '../history/crashHistoryService'
+import {
+  applyRoundResult,
+  computeWinRate,
+  createEngineSession,
+  decideRound,
+  type EngineDecision,
+  type EngineSession,
+} from '../strategy-engine'
 import type {
   AppSettings,
+  BetHistoryEntry,
   CustomStrategy,
+  DemoStats,
   PredefinedStrategyId,
   SelectedStrategyRef,
   StrategyConfig,
@@ -37,6 +56,7 @@ type AppAction =
         | 'editor'
         | 'confirmDeleteId'
         | 'demoStats'
+        | 'betHistory'
         | 'toast'
         | 'activeTab'
       >
@@ -55,7 +75,13 @@ type AppAction =
   | { type: 'SET_EDITOR'; editor: AppState['editor'] }
   | { type: 'SET_CONFIRM_DELETE'; id: string | null }
   | { type: 'SET_TOAST'; message: string | null }
-  | { type: 'BUMP_DEMO_STATS' }
+  | { type: 'RESET_DEMO_STATS' }
+  | { type: 'APPLY_DEMO_ROUND'; stats: DemoStats }
+  | { type: 'PATCH_DEMO_STATS'; stats: Partial<DemoStats> }
+  | { type: 'APPEND_BET_HISTORY'; entry: BetHistoryEntry }
+  | { type: 'CLEAR_BET_HISTORY' }
+
+const BET_HISTORY_MAX = 200
 
 const initialState: AppState = {
   ready: false,
@@ -69,6 +95,7 @@ const initialState: AppState = {
   editor: { type: 'closed' },
   confirmDeleteId: null,
   demoStats: { ...DEMO_STATS },
+  betHistory: [],
   toast: null,
 }
 
@@ -139,15 +166,22 @@ function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, confirmDeleteId: action.id }
     case 'SET_TOAST':
       return { ...state, toast: action.message }
-    case 'BUMP_DEMO_STATS':
+    case 'RESET_DEMO_STATS':
+      return { ...state, demoStats: { ...DEMO_STATS } }
+    case 'APPLY_DEMO_ROUND':
+      return { ...state, demoStats: action.stats }
+    case 'PATCH_DEMO_STATS':
       return {
         ...state,
-        demoStats: {
-          balance: Number((Math.random() * 0.01).toFixed(8)),
-          totalBets: state.demoStats.totalBets + 1,
-          totalProfit: Number(((Math.random() - 0.45) * 0.002).toFixed(8)),
-        },
+        demoStats: { ...state.demoStats, ...action.stats },
       }
+    case 'APPEND_BET_HISTORY':
+      return {
+        ...state,
+        betHistory: [action.entry, ...state.betHistory].slice(0, BET_HISTORY_MAX),
+      }
+    case 'CLEAR_BET_HISTORY':
+      return { ...state, betHistory: [] }
     default:
       return state
   }
@@ -156,7 +190,17 @@ function reducer(state: AppState, action: AppAction): AppState {
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState)
   const toastTimer = useRef<number | null>(null)
-  const demoTimer = useRef<number | null>(null)
+  const betPollTimer = useRef<number | null>(null)
+  const engineSession = useRef<EngineSession | null>(null)
+  const demoStatsRef = useRef(state.demoStats)
+  const pendingDecision = useRef<EngineDecision | null>(null)
+  const actedForGameId = useRef<string | null>(null)
+  const lastResultGameId = useRef<string | null>(null)
+  const showToastRef = useRef<(message: string) => void>(() => {})
+
+  useEffect(() => {
+    demoStatsRef.current = state.demoStats
+  }, [state.demoStats])
 
   useEffect(() => {
     let cancelled = false
@@ -204,25 +248,209 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    showToastRef.current = showToast
+  }, [showToast])
+
+  const getSelectedLabelRef = useRef<() => string>(() => 'Strategy')
+
+  const applyLiveResult = useCallback((gameId: string, crash: number) => {
+    const session = engineSession.current
+    if (!session || session.stopped) return
+    if (lastResultGameId.current === gameId) return
+
+    const decision =
+      pendingDecision.current ??
+      ({ action: 'skip', reason: 'no pending decision' } as EngineDecision)
+
+    const applied = applyRoundResult(session, crash, decision)
+    engineSession.current = applied.session
+    lastResultGameId.current = gameId
+    pendingDecision.current = null
+    actedForGameId.current = null
+
+    const prev = demoStatsRef.current
+    const wins = prev.wins + (applied.outcome === 'win' ? 1 : 0)
+    const losses = prev.losses + (applied.outcome === 'loss' ? 1 : 0)
+    const skips = prev.skips + (applied.outcome === 'skip' ? 1 : 0)
+    const totalBets =
+      decision.action === 'bet' ? prev.totalBets + 1 : prev.totalBets
+
+    dispatch({
+      type: 'APPLY_DEMO_ROUND',
+      stats: {
+        balance: Math.max(0, applied.session.profit),
+        totalBets,
+        totalProfit: applied.session.profit,
+        wins,
+        losses,
+        skips,
+        winRate: computeWinRate(wins, losses),
+        lastOutcome: applied.outcome,
+        lastCrash: crash,
+        lastTarget: decision.action === 'bet' ? decision.target : null,
+        lastStake: decision.action === 'bet' ? decision.stake : null,
+        lastDecisionReason: decision.reason,
+      },
+    })
+
+    if (decision.action === 'bet' && applied.outcome !== 'skip') {
+      dispatch({
+        type: 'APPEND_BET_HISTORY',
+        entry: {
+          id: createId('bet'),
+          roundId: gameId,
+          strategyId: session.strategyId,
+          strategyName: getSelectedLabelRef.current(),
+          stake: decision.stake,
+          target: decision.target,
+          crash,
+          outcome: applied.outcome,
+          reason: decision.reason,
+          profitDelta: applied.profitDelta,
+          placedAt: Date.now(),
+        },
+      })
+    } else if (decision.action === 'skip') {
+      dispatch({
+        type: 'APPEND_BET_HISTORY',
+        entry: {
+          id: createId('skip'),
+          roundId: gameId,
+          strategyId: session.strategyId,
+          strategyName: getSelectedLabelRef.current(),
+          stake: 0,
+          target: session.config.targetMultiplier,
+          crash,
+          outcome: 'skip',
+          reason: decision.reason,
+          profitDelta: 0,
+          placedAt: Date.now(),
+        },
+      })
+    }
+
+    if (applied.session.stopped) {
+      dispatch({ type: 'SET_RUNNING', isRunning: false })
+      showToastRef.current(applied.session.stopReason ?? 'Auto bet stopped')
+    }
+  }, [])
+
+  useEffect(() => {
     if (!state.isRunning) {
-      if (demoTimer.current) {
-        window.clearInterval(demoTimer.current)
-        demoTimer.current = null
+      if (betPollTimer.current) {
+        window.clearInterval(betPollTimer.current)
+        betPollTimer.current = null
       }
       return
     }
 
-    demoTimer.current = window.setInterval(() => {
-      dispatch({ type: 'BUMP_DEMO_STATS' })
-    }, 1800)
+    let cancelled = false
+    let placing = false
+    const port = connectHistoryPort()
+
+    const onPortMessage = (message: unknown) => {
+      if (cancelled) return
+      if (!isHistoryEntryMessage(message)) return
+      const adapted = adaptCrashHistoryEntries([message.entry])[0]
+      if (!adapted) return
+      applyLiveResult(adapted.roundId, adapted.multiplier)
+    }
+
+    port?.onMessage.addListener(onPortMessage)
+
+    betPollTimer.current = window.setInterval(() => {
+      void (async () => {
+        if (cancelled || placing) return
+        const session = engineSession.current
+        if (!session || session.stopped) {
+          dispatch({ type: 'SET_RUNNING', isRunning: false })
+          return
+        }
+
+        const ui = await getCrashBetUiStatus()
+        if (cancelled) return
+        if (!ui.success || !ui.status) return
+
+        const anchorGameId = ui.status.lastGameId ?? 'unknown'
+        if (actedForGameId.current === anchorGameId) return
+        if (!ui.status.bettingOpen) return
+
+        const decision = decideRound(session)
+        pendingDecision.current = decision
+
+        if (decision.action === 'skip') {
+          actedForGameId.current = anchorGameId
+          dispatch({
+            type: 'PATCH_DEMO_STATS',
+            stats: {
+              lastOutcome: 'skip',
+              lastDecisionReason: decision.reason,
+              lastStake: null,
+              lastTarget: null,
+            },
+          })
+          showToastRef.current(`Skip · ${decision.reason}`)
+          return
+        }
+
+        placing = true
+        try {
+          const placed = await placeCrashBet({
+            amount: decision.stake,
+            target: decision.target,
+          })
+          if (cancelled) return
+
+          if (placed.success) {
+            actedForGameId.current = anchorGameId
+            dispatch({
+              type: 'PATCH_DEMO_STATS',
+              stats: {
+                lastDecisionReason: decision.reason,
+                lastStake: decision.stake,
+                lastTarget: decision.target,
+              },
+            })
+            showToastRef.current(
+              `Bet ${decision.stake} @ ${decision.target}x`,
+            )
+            return
+          }
+
+          if (
+            placed.reason === 'not-betting-window' ||
+            placed.reason === 'already-placed'
+          ) {
+            if (placed.reason === 'already-placed') {
+              actedForGameId.current = anchorGameId
+            } else {
+              pendingDecision.current = null
+            }
+            return
+          }
+
+          pendingDecision.current = null
+          showToastRef.current(placed.error ?? 'Could not place bet on page')
+        } finally {
+          placing = false
+        }
+      })()
+    }, 900)
 
     return () => {
-      if (demoTimer.current) {
-        window.clearInterval(demoTimer.current)
-        demoTimer.current = null
+      cancelled = true
+      try {
+        port?.onMessage.removeListener(onPortMessage)
+        port?.disconnect()
+      } catch {
+        // ignore
+      }
+      if (betPollTimer.current) {
+        window.clearInterval(betPollTimer.current)
+        betPollTimer.current = null
       }
     }
-  }, [state.isRunning])
+  }, [state.isRunning, applyLiveResult])
 
   const getSelectedConfig = useCallback((): StrategyConfig | null => {
     if (state.selectedStrategy.kind === 'predefined') {
@@ -244,10 +472,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     )
   }, [state.selectedStrategy, state.customStrategies])
 
+  useEffect(() => {
+    getSelectedLabelRef.current = getSelectedLabel
+  }, [getSelectedLabel])
+
   const value = useMemo<AppContextValue>(
     () => ({
       state,
       setTab: (tab) => dispatch({ type: 'SET_TAB', tab }),
+      openBetHistory: () => dispatch({ type: 'SET_TAB', tab: 'bets' }),
+      clearBetHistory: () => dispatch({ type: 'CLEAR_BET_HISTORY' }),
       selectStrategy: (selected) =>
         dispatch({ type: 'SELECT_STRATEGY', selected }),
       updateSettings: (settings) =>
@@ -331,23 +565,74 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cancelDeleteCustom: () =>
         dispatch({ type: 'SET_CONFIRM_DELETE', id: null }),
       startAutoBet: () => {
-        if (!getSelectedConfig()) {
+        const config = getSelectedConfig()
+        if (!config) {
           showToast('Select a strategy first')
           return false
         }
-        if (state.settings.confirmBeforeStarting) {
-          const accepted = window.confirm(
-            `Start simulated auto bet with "${getSelectedLabel()}"?\n\nThis is a UI demonstration only — no real bets are placed.`,
-          )
-          if (!accepted) return false
-        }
-        dispatch({ type: 'SET_RUNNING', isRunning: true })
-        showToast('Demo auto bet running')
+        const strategyId =
+          state.selectedStrategy.kind === 'predefined'
+            ? state.selectedStrategy.id
+            : 'custom'
+
+        // Start immediately — no confirm dialog.
+        void (async () => {
+          // Best-effort ping; betting uses direct page injection and does not
+          // require the content-script message port.
+          const ping = await pingCrashContentScript()
+          if (!ping.ready) {
+            showToast('Open https://bc.game/game/crash, then try again')
+            // Still continue — placeBet uses scripting.executeScript
+          }
+
+          void startHistoryCapture()
+          const stored = await fetchStoredHistory()
+          const rounds = adaptCrashHistoryEntries(stored)
+          const history = rounds
+            .slice()
+            .reverse()
+            .map((round) => round.multiplier)
+
+          pendingDecision.current = null
+          actedForGameId.current = null
+          lastResultGameId.current = rounds[0]?.roundId ?? null
+
+          engineSession.current = createEngineSession({
+            strategyId,
+            config,
+            history,
+          })
+          dispatch({ type: 'RESET_DEMO_STATS' })
+          dispatch({ type: 'SET_RUNNING', isRunning: true })
+
+          // Place first bet right away when strategy says so.
+          const decision = decideRound(engineSession.current)
+          pendingDecision.current = decision
+          if (decision.action === 'bet') {
+            const placed = await placeCrashBet({
+              amount: decision.stake,
+              target: decision.target,
+            })
+            if (placed.success) {
+              showToast(`Bet ${decision.stake} @ ${decision.target}x`)
+            } else if (placed.reason !== 'not-betting-window') {
+              showToast(placed.error ?? 'Waiting for next betting window…')
+            } else {
+              showToast('Auto bet running — waiting for bet window')
+            }
+          } else {
+            showToast(decision.reason || 'Auto bet running (waiting for signal)')
+          }
+        })()
+
         return true
       },
       stopAutoBet: () => {
+        engineSession.current = null
+        pendingDecision.current = null
+        actedForGameId.current = null
         dispatch({ type: 'SET_RUNNING', isRunning: false })
-        showToast('Demo auto bet stopped')
+        showToast('Auto bet stopped')
       },
       getSelectedConfig,
       getSelectedLabel,

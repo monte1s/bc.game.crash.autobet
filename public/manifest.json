@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Crash Auto Bet",
   "description": "Sidebar UI for BC.GAME Crash strategies and live crash histories. Only works on the BC.GAME Crash page.",
-  "version": "0.2.2",
+  "version": "0.3.2",
   "permissions": ["storage", "sidePanel", "tabs", "scripting"],
   "host_permissions": [
     "https://bc.game/*",

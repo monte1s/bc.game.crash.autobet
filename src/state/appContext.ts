@@ -1,6 +1,7 @@
 import { createContext } from 'react'
 import type {
   AppSettings,
+  BetHistoryEntry,
   CustomStrategy,
   DemoStats,
   EditorMode,
@@ -21,6 +22,7 @@ export interface AppState {
   editor: EditorMode
   confirmDeleteId: string | null
   demoStats: DemoStats
+  betHistory: BetHistoryEntry[]
   toast: string | null
 }
 
@@ -42,6 +44,8 @@ export interface AppContextValue {
   cancelDeleteCustom: () => void
   startAutoBet: () => boolean
   stopAutoBet: () => void
+  openBetHistory: () => void
+  clearBetHistory: () => void
   getSelectedConfig: () => StrategyConfig | null
   getSelectedLabel: () => string
   clearToast: () => void

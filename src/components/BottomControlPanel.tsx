@@ -4,14 +4,23 @@ import './BottomControlPanel.css'
 import { IconPlay, IconSquare } from './icons'
 
 export function BottomControlPanel() {
-  const { state, startAutoBet, stopAutoBet, getSelectedLabel } = useAppState()
+  const {
+    state,
+    startAutoBet,
+    stopAutoBet,
+    getSelectedLabel,
+    openBetHistory,
+  } = useAppState()
 
   return (
     <footer className="bottom-panel">
       {state.isRunning ? (
         <div className="bottom-panel__running" aria-live="polite">
           <span className="bottom-panel__pulse" aria-hidden="true" />
-          Simulated run · {getSelectedLabel()}
+          {state.demoStats.lastOutcome === 'skip' &&
+          state.demoStats.lastDecisionReason
+            ? `Skipping · ${state.demoStats.lastDecisionReason}`
+            : `Live auto bet · ${getSelectedLabel()}`}
         </div>
       ) : null}
 
@@ -39,7 +48,10 @@ export function BottomControlPanel() {
         )}
       </button>
 
-      <StatisticsSummary stats={state.demoStats} />
+      <StatisticsSummary
+        stats={state.demoStats}
+        onOpenBetHistory={openBetHistory}
+      />
     </footer>
   )
 }
