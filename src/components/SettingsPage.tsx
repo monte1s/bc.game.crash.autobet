@@ -13,14 +13,18 @@ export function SettingsPage() {
       <h2 className="settings-page__heading">Settings</h2>
 
       <SettingsSection title="Betting Defaults">
-        <FormField label="Default starting bet" htmlFor="settings-defaultStartingBet">
+        <FormField
+          label="Default starting bet"
+          htmlFor="settings-defaultStartingBet"
+          hint="0 = paper test (no money)"
+        >
           <NumberInput
             id="settings-defaultStartingBet"
             value={String(settings.defaultStartingBet)}
             disabled={isRunning}
             onChange={(event) => {
               const value = Number(event.target.value)
-              if (Number.isFinite(value) && value > 0) {
+              if (Number.isFinite(value) && value >= 0) {
                 updateSettings({ defaultStartingBet: value })
               }
             }}
@@ -58,14 +62,18 @@ export function SettingsPage() {
       </SettingsSection>
 
       <SettingsSection title="Safety Limits">
-        <FormField label="Maximum bet amount" htmlFor="settings-maxBetAmount">
+        <FormField
+          label="Maximum bet amount"
+          htmlFor="settings-maxBetAmount"
+          hint="0 = no cap"
+        >
           <NumberInput
             id="settings-maxBetAmount"
             value={String(settings.maxBetAmount)}
             disabled={isRunning}
             onChange={(event) => {
               const value = Number(event.target.value)
-              if (Number.isFinite(value) && value > 0) {
+              if (Number.isFinite(value) && value >= 0) {
                 updateSettings({ maxBetAmount: value })
               }
             }}
@@ -107,22 +115,11 @@ export function SettingsPage() {
           checked={settings.compactMode}
           onChange={(compactMode) => updateSettings({ compactMode })}
         />
-        <SettingsToggle
-          id="settings-confirmBeforeStarting"
-          label="Confirm before starting"
-          hint="Ask for confirmation before entering the simulated running state."
-          checked={settings.confirmBeforeStarting}
-          disabled={isRunning}
-          onChange={(confirmBeforeStarting) =>
-            updateSettings({ confirmBeforeStarting })
-          }
-        />
       </SettingsSection>
 
       <p className="settings-page__disclaimer">
-        These are configuration preferences for the sidebar UI. They do not guarantee
-        any betting outcome, and this build does not execute real auto-bets on
-        BC.GAME.
+        Auto Bet writes Amount + Auto cash out on the open Crash tab and clicks Bet.
+        Keep https://bc.game/game/crash on the Manual panel while running.
       </p>
     </div>
   )

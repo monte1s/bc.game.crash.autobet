@@ -106,7 +106,11 @@ function normalizeConfig(config: Signal13Config): Signal13Config {
     ...config,
     target: SIGNAL13_TARGET,
     mode: config.mode === 'session' ? 'session' : 'filter',
-    baseBet: config.baseBet > 0 ? config.baseBet : DEFAULT_SIGNAL13_CONFIG.baseBet,
+    // Allow 0 for paper testing (BC.GAME accepts 0 stakes)
+    baseBet:
+      Number.isFinite(config.baseBet) && config.baseBet >= 0
+        ? config.baseBet
+        : DEFAULT_SIGNAL13_CONFIG.baseBet,
     window: config.window > 0 ? Math.floor(config.window) : DEFAULT_SIGNAL13_CONFIG.window,
     minUnder:
       config.minUnder > 0 ? Math.floor(config.minUnder) : DEFAULT_SIGNAL13_CONFIG.minUnder,

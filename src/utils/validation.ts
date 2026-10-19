@@ -83,7 +83,8 @@ export function validateStrategyForm(
     }
   }
 
-  const initialBet = parsePositiveNumber(values.initialBet, 'Initial bet')
+  // 0 bet is allowed — BC.GAME Crash accepts 0 for paper testing without money.
+  const initialBet = parseNonNegativeNumber(values.initialBet, 'Initial bet')
   if (typeof initialBet === 'string') errors.initialBet = initialBet
 
   const targetMultiplier = parsePositiveNumber(
@@ -103,7 +104,8 @@ export function validateStrategyForm(
     errors.maxBets = 'Maximum bets must be a whole number'
   }
 
-  const maxBetAmount = parsePositiveNumber(values.maxBetAmount, 'Maximum bet')
+  // 0 max bet = unlimited for paper tests / uncapped progression display
+  const maxBetAmount = parseNonNegativeNumber(values.maxBetAmount, 'Maximum bet')
   if (typeof maxBetAmount === 'string') errors.maxBetAmount = maxBetAmount
 
   const stopLoss = parseNonNegativeNumber(values.stopLoss, 'Stop-loss')
@@ -124,7 +126,8 @@ export function validateStrategyForm(
   )
   if (typeof winMultiplier === 'string') errors.winMultiplier = winMultiplier
 
-  const unitStep = parsePositiveNumber(values.unitStep, 'Unit step')
+  // 0 unit step allowed for 0-bet paper tests (D'Alembert stays flat at 0)
+  const unitStep = parseNonNegativeNumber(values.unitStep, 'Unit step')
   if (typeof unitStep === 'string') errors.unitStep = unitStep
 
   const adjustmentMultiplier = parsePositiveNumber(
@@ -138,6 +141,7 @@ export function validateStrategyForm(
   if (
     typeof initialBet === 'number' &&
     typeof maxBetAmount === 'number' &&
+    maxBetAmount > 0 &&
     initialBet > maxBetAmount
   ) {
     errors.initialBet = 'Initial bet cannot exceed maximum bet amount'

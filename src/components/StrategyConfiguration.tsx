@@ -97,23 +97,30 @@ export function StrategyConfiguration({
 
       <div className="editor-sheet__body">
         <p className="editor-sheet__note">
-          These settings prepare the future strategy engine. They do not place bets
-          yet.
+          Saved values are pushed to the Crash page (Amount + Auto cash out) when you
+          Start Auto Bet. Use initial bet 0 for paper testing (BC.GAME allows 0
+          stakes).
         </p>
         <div className="form-grid">
           <div className="form-grid form-grid--2">
-            <FormField label="Initial bet" htmlFor="cfg-initialBet" error={errors.initialBet}>
+            <FormField
+              label="Initial bet"
+              htmlFor="cfg-initialBet"
+              error={errors.initialBet}
+              hint="0 = paper test (no money)"
+            >
               <NumberInput
                 id="cfg-initialBet"
                 value={values.initialBet}
                 onChange={update('initialBet')}
-                placeholder="0.00010000"
+                placeholder="0 or 0.00010000"
               />
             </FormField>
             <FormField
               label="Target multiplier"
               htmlFor="cfg-targetMultiplier"
               error={errors.targetMultiplier}
+              hint="Cashout target — win if crash ≥ this"
             >
               <NumberInput
                 id="cfg-targetMultiplier"

@@ -92,18 +92,20 @@ export function StrategyEditor({
               label="Initial bet amount"
               htmlFor="custom-initialBet"
               error={errors.initialBet}
+              hint="0 = paper test (no money)"
             >
               <NumberInput
                 id="custom-initialBet"
                 value={values.initialBet}
                 onChange={update('initialBet')}
-                placeholder="0.00010000"
+                placeholder="0 or 0.00010000"
               />
             </FormField>
             <FormField
               label="Target cash-out multiplier"
               htmlFor="custom-targetMultiplier"
               error={errors.targetMultiplier}
+              hint="Win if crash ≥ target"
             >
               <NumberInput
                 id="custom-targetMultiplier"

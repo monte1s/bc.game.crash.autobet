@@ -27,7 +27,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   stopLoss: 0.001,
   takeProfit: 0.002,
   compactMode: false,
-  confirmBeforeStarting: true,
+  confirmBeforeStarting: false,
 }
 
 export const DEFAULT_SELECTED_STRATEGY: {
@@ -42,6 +42,15 @@ export const DEMO_STATS: DemoStats = {
   balance: 0,
   totalBets: 0,
   totalProfit: 0,
+  wins: 0,
+  losses: 0,
+  skips: 0,
+  winRate: 0,
+  lastOutcome: null,
+  lastCrash: null,
+  lastTarget: null,
+  lastStake: null,
+  lastDecisionReason: null,
 }
 
 export const STORAGE_KEY = 'crash-autobet-state-v1'

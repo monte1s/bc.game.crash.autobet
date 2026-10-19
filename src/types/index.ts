@@ -1,4 +1,20 @@
-export type TabId = 'strategies' | 'histories' | 'settings'
+export type TabId = 'strategies' | 'histories' | 'bets' | 'settings'
+
+/** One auto-bet decision: placed wager or intentional skip. */
+export interface BetHistoryEntry {
+  id: string
+  roundId: string
+  strategyId: string
+  strategyName: string
+  stake: number
+  target: number
+  crash: number | null
+  outcome: 'win' | 'loss' | 'skip'
+  /** Why we bet or skipped (e.g. signal off: 3/11 under 1.3). */
+  reason: string
+  profitDelta: number
+  placedAt: number
+}
 
 /** Strategy skill id from a registered strategy pack. */
 export type PredefinedStrategyId = string
@@ -85,6 +101,17 @@ export interface DemoStats {
   balance: number
   totalBets: number
   totalProfit: number
+  wins: number
+  losses: number
+  skips: number
+  /** 0–1 win rate over resolved bets (wins + losses). */
+  winRate: number
+  lastOutcome: 'win' | 'loss' | 'skip' | null
+  lastCrash: number | null
+  lastTarget: number | null
+  lastStake: number | null
+  /** Human-readable last decision (bet/skip reason). */
+  lastDecisionReason: string | null
 }
 
 export interface PersistedState {
