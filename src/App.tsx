@@ -1,4 +1,5 @@
 import './App.css'
+import { BetHistoriesPage } from './components/BetHistoriesPage'
 import { BottomControlPanel } from './components/BottomControlPanel'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { HistoriesPage } from './components/HistoriesPage'
@@ -59,7 +60,9 @@ function AppContent() {
     : null
 
   const showBottomPanel =
-    state.activeTab === 'strategies' || state.activeTab === 'histories'
+    state.activeTab === 'strategies' ||
+    state.activeTab === 'histories' ||
+    state.activeTab === 'bets'
 
   const shellClass = [
     'app-shell',
@@ -79,6 +82,7 @@ function AppContent() {
         activeTab={state.activeTab}
         onChange={setTab}
         disabled={state.editor.type !== 'closed'}
+        betCount={state.betHistory.length}
       />
 
       <div className="app-main">
@@ -93,6 +97,13 @@ function AppContent() {
           <>
             <div className="app-scroll">
               <HistoriesPage active={state.activeTab === 'histories'} />
+            </div>
+            {showBottomPanel ? <BottomControlPanel /> : null}
+          </>
+        ) : state.activeTab === 'bets' ? (
+          <>
+            <div className="app-scroll">
+              <BetHistoriesPage />
             </div>
             {showBottomPanel ? <BottomControlPanel /> : null}
           </>

@@ -1,17 +1,19 @@
 import type { TabId } from '../types'
 import './SidebarNavigation.css'
-import { IconActivity, IconList, IconSettings } from './icons'
+import { IconActivity, IconCoins, IconList, IconSettings } from './icons'
 
 interface SidebarNavigationProps {
   activeTab: TabId
   onChange: (tab: TabId) => void
   disabled?: boolean
+  betCount?: number
 }
 
 export function SidebarNavigation({
   activeTab,
   onChange,
   disabled = false,
+  betCount = 0,
 }: SidebarNavigationProps) {
   return (
     <nav className="sidebar-nav" aria-label="Sidebar sections">
@@ -34,6 +36,16 @@ export function SidebarNavigation({
       >
         <IconActivity size={14} />
         Histories
+      </button>
+      <button
+        type="button"
+        className={`sidebar-nav__tab ${activeTab === 'bets' ? 'is-active' : ''}`}
+        onClick={() => onChange('bets')}
+        aria-current={activeTab === 'bets' ? 'page' : undefined}
+        disabled={disabled}
+      >
+        <IconCoins size={14} />
+        Bets{betCount > 0 ? ` (${betCount})` : ''}
       </button>
       <button
         type="button"

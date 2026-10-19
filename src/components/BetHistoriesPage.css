@@ -1,0 +1,81 @@
+.bet-histories-page__clear {
+  flex-shrink: 0;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.bet-histories-page .bet-history-table__head,
+.bet-histories-page .bet-history-row {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 1.25fr) minmax(0, 0.7fr);
+}
+
+.bet-history-row {
+  align-items: start;
+}
+
+.bet-history-row__round,
+.bet-history-row__stake,
+.bet-history-row__result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bet-history-row__strategy,
+.bet-history-row__target,
+.bet-history-row__crash,
+.bet-history-row__pnl {
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bet-outcome-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.bet-outcome-pill.is-win {
+  color: #04140d;
+  background: var(--accent);
+}
+
+.bet-outcome-pill.is-loss {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.22);
+}
+
+.bet-outcome-pill.is-skip {
+  color: #fef3c7;
+  background: rgba(245, 158, 11, 0.22);
+}
+
+.bet-history-row__reason,
+.bet-history-row__muted {
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bet-history-row__pnl.is-positive {
+  color: var(--accent);
+}
+
+.bet-history-row__pnl.is-negative {
+  color: #fda29b;
+}
