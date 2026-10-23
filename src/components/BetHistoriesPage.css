@@ -5,6 +5,55 @@
   font-size: 11px;
 }
 
+.bet-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bet-summary__cell {
+  min-width: 0;
+  padding: 8px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.85);
+  text-align: center;
+}
+
+.bet-summary__label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.bet-summary__value {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bet-summary__value.is-positive {
+  color: var(--accent);
+}
+
+.bet-summary__value.is-negative {
+  color: #fda29b;
+}
+
+@media (min-width: 360px) {
+  .bet-summary {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
 .bet-histories-page .bet-history-table__head,
 .bet-histories-page .bet-history-row {
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 1.25fr) minmax(0, 0.7fr);

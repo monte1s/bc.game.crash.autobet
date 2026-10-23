@@ -1,15 +1,62 @@
+import { useMemo } from 'react'
 import { formatBet, formatMultiplier } from '../data/defaults'
 import { formatRoundTime } from '../history/crashHistoryAdapter'
 import { useAppState } from '../state/useAppState'
+import type { BetHistoryEntry } from '../types'
 import './HistoriesPage.css'
 import './BetHistoriesPage.css'
 import { IconCoins, IconList } from './icons'
 
+function summarizeBetHistory(entries: BetHistoryEntry[]) {
+  let wins = 0
+  let losses = 0
+  let skips = 0
+  let totalStaked = 0
+  let totalProfit = 0
+
+  for (const entry of entries) {
+    if (entry.outcome === 'win') {
+      wins += 1
+      totalStaked += entry.stake
+      totalProfit += entry.profitDelta
+    } else if (entry.outcome === 'loss') {
+      losses += 1
+      totalStaked += entry.stake
+      totalProfit += entry.profitDelta
+    } else {
+      skips += 1
+    }
+  }
+
+  const bets = wins + losses
+  const decisions = entries.length
+  const winRate = bets > 0 ? wins / bets : 0
+  const betRate = decisions > 0 ? bets / decisions : 0
+
+  return {
+    bets,
+    wins,
+    losses,
+    skips,
+    decisions,
+    winRate,
+    betRate,
+    totalStaked,
+    totalProfit,
+  }
+}
+
 export function BetHistoriesPage() {
   const { state, clearBetHistory } = useAppState()
   const entries = state.betHistory
-  const bets = entries.filter((e) => e.outcome !== 'skip').length
-  const skips = entries.filter((e) => e.outcome === 'skip').length
+  const summary = useMemo(() => summarizeBetHistory(entries), [entries])
+
+  const profitClass =
+    summary.totalProfit > 0
+      ? 'is-positive'
+      : summary.totalProfit < 0
+        ? 'is-negative'
+        : ''
 
   return (
     <div className="histories-page bet-histories-page">
@@ -30,6 +77,48 @@ export function BetHistoriesPage() {
           </button>
         ) : null}
       </div>
+
+      {entries.length > 0 ? (
+        <section className="bet-summary" aria-label="Bet history summary">
+          <div className="bet-summary__cell">
+            <span className="bet-summary__label">Bets</span>
+            <span className="bet-summary__value">{summary.bets}</span>
+          </div>
+          <div className="bet-summary__cell">
+            <span className="bet-summary__label">W / L</span>
+            <span className="bet-summary__value">
+              {summary.wins}/{summary.losses}
+            </span>
+          </div>
+          <div className="bet-summary__cell">
+            <span className="bet-summary__label">Skips</span>
+            <span className="bet-summary__value">{summary.skips}</span>
+          </div>
+          <div className="bet-summary__cell">
+            <span className="bet-summary__label">Win rate</span>
+            <span className="bet-summary__value">
+              {summary.bets === 0
+                ? '—'
+                : `${(summary.winRate * 100).toFixed(1)}%`}
+            </span>
+          </div>
+          <div className="bet-summary__cell">
+            <span className="bet-summary__label">Bet rate</span>
+            <span className="bet-summary__value">
+              {summary.decisions === 0
+                ? '—'
+                : `${(summary.betRate * 100).toFixed(0)}%`}
+            </span>
+          </div>
+          <div className="bet-summary__cell">
+            <span className="bet-summary__label">P/L</span>
+            <span className={`bet-summary__value ${profitClass}`}>
+              {summary.totalProfit > 0 ? '+' : ''}
+              {formatBet(summary.totalProfit)}
+            </span>
+          </div>
+        </section>
+      ) : null}
 
       <section className="history-table" aria-label="Bet history">
         <div className="history-table__head bet-history-table__head">
@@ -119,8 +208,8 @@ export function BetHistoriesPage() {
         <div className="history-table__footer">
           <span className="history-table__footer-live">
             <IconCoins size={11} />
-            {bets} bet{bets === 1 ? '' : 's'} · {skips} skip
-            {skips === 1 ? '' : 's'}
+            {summary.bets} bet{summary.bets === 1 ? '' : 's'} · {summary.skips}{' '}
+            skip{summary.skips === 1 ? '' : 's'}
           </span>
           <span>
             <IconList size={11} /> Signal skips included

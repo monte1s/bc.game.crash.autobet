@@ -104,7 +104,7 @@ export function StatisticsSummary({
       ) : null}
 
       <p className="stats-summary__caption">
-        Signal 1.3x skips unless ≥5 of last 11 crashes are under 1.3 · tap Bets
+        Signal 1.3x skips unless ≥2 of last 10 crashes are under 1.3 · tap Bets
         for log
       </p>
     </div>

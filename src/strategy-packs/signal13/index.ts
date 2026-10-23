@@ -25,7 +25,7 @@ export type {
 export const signal13StrategyPack: StrategyPack = {
   id: 'signal13',
   name: 'Signal 1.3x',
-  description: 'Bet 1.3x only after a cluster of low crashes (5/11 under 1.3).',
+  description: 'Bet 1.3x only after a cluster of low crashes (2/10 under 1.3).',
   version: '1.0.0',
   strategies: [signal13Strategy],
 }

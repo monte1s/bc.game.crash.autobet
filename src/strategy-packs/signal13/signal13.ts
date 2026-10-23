@@ -3,9 +3,9 @@
  *
  * Rules:
  * - Cashout target is always 1.3x (never change mid-session).
- * - Look at the last `window` (default 11) completed crashes before the current round.
+ * - Look at the last `window` (default 10) completed crashes before the current round.
  * - Count how many are strictly under 1.3 (`crash < 1.3`).
- * - Signal ON when history.length >= window AND underCount >= minUnder (default 5).
+ * - Signal ON when history.length >= window AND underCount >= minUnder (default 2).
  *
  * Modes:
  * - `filter` (default): bet flat `baseBet` @ 1.3 only when signal is ON; no martingale.
@@ -30,9 +30,9 @@ export interface Signal13Config {
   baseBet: number
   /** Fixed cashout for this strategy. Always 1.3. */
   target: typeof SIGNAL13_TARGET
-  /** Lookback window (completed crashes before current round). Default 11. */
+  /** Lookback window (completed crashes before current round). Default 10. */
   window: number
-  /** Min crashes strictly under `target` in the window. Default 5. */
+  /** Min crashes strictly under `target` in the window. Default 2. */
   minUnder: number
   /** `filter` = flat bets when signal on; `session` = martingale until win. */
   mode: Signal13Mode
@@ -63,8 +63,8 @@ export type Decision =
 export const DEFAULT_SIGNAL13_CONFIG: Signal13Config = {
   baseBet: 1,
   target: SIGNAL13_TARGET,
-  window: 11,
-  minUnder: 5,
+  window: 10,
+  minUnder: 2,
   mode: 'filter',
   betMultiplier: 2,
 }

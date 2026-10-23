@@ -66,7 +66,7 @@ describe('strategy engine — all registered skills', () => {
 
       const history =
         strategyId === 'signal13'
-          ? [...Array.from({ length: 6 }, () => 1.1), ...Array.from({ length: 5 }, () => 2)]
+          ? [...Array.from({ length: 3 }, () => 1.1), ...Array.from({ length: 7 }, () => 2)]
           : []
 
       // Mix of wins (crash >= 2) and losses (crash < 2); signal13 target is 1.3
